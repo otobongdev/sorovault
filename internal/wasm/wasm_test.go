@@ -194,6 +194,55 @@ func TestCustomSectionNames(t *testing.T) {
 	}, names)
 }
 
+// TestCustomSectionNamesEdgeCases covers boundary inputs for
+// CustomSectionNames: a module with no custom sections at all, a module
+// containing only non-custom sections, and inputs that are too large.
+func TestCustomSectionNamesEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		module  []byte
+		want    []string
+		wantErr bool
+	}{
+		{
+			// A valid WASM header with no sections at all: the loop never
+			// executes and the function returns nil (no names), no error.
+			name:   "header only, no sections",
+			module: []byte{0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00},
+			want:   nil,
+		},
+		{
+			// A module whose only section is non-custom (type section id=1):
+			// the section is walked but its name is never collected.
+			name:   "only non-custom sections returns nil names",
+			module: wasmtest.ModuleWithNonCustom(1, []byte{0x00}),
+			want:   nil,
+		},
+		{
+			// A module larger than MaxModuleSize must be rejected.
+			name:    "oversized module returns ErrModuleTooLarge",
+			module:  make([]byte, wasm.MaxModuleSize+1),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			names, err := wasm.CustomSectionNames(tt.module)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, wasm.ErrModuleTooLarge)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, names)
+		})
+	}
+}
+
 // TestCustomSectionAliases documents that the returned slice points into the
 // caller's buffer, so callers who intend to retain it must copy.
 func TestCustomSectionAliases(t *testing.T) {
