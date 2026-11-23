@@ -1,12 +1,10 @@
-package zkvote_test
+package zkvote
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	zkvote "github.com/soroworks/sorovault/internal/codegen/testdata"
 )
 
 // TestGetProposalHappyPath confirms that a client built with the canonical
@@ -16,7 +14,7 @@ import (
 func TestGetProposalHappyPath(t *testing.T) {
 	t.Parallel()
 
-	client := zkvote.NewClient(zkvote.ContractID, zkvote.Network)
+	client := NewClient(ContractID, Network)
 	op, err := client.GetProposal(0)
 	require.NoError(t, err, "GetProposal with a valid contract ID must not fail")
 	assert.NotNil(t, op, "GetProposal must return a non-nil operation")
@@ -27,8 +25,42 @@ func TestGetProposalHappyPath(t *testing.T) {
 func TestGetProposalInvalidContractID(t *testing.T) {
 	t.Parallel()
 
-	client := &zkvote.Client{ContractID: "not-a-valid-strkey", Network: zkvote.Network}
+	client := &Client{ContractID: "not-a-valid-strkey", Network: Network}
 	op, err := client.GetProposal(0)
 	require.Error(t, err, "GetProposal with an invalid contract ID must return an error")
 	assert.Nil(t, op, "GetProposal must return nil operation on error")
+}
+
+// TestGetVoteParams covers the happy path (valid contract ID returns an
+// operation) and the error path (an invalid ID fails at the strkey layer).
+func TestGetVoteParams(t *testing.T) {
+	tests := []struct {
+		name       string
+		contractID string
+		wantErr    bool
+	}{
+		{
+			name:       "valid contract ID returns an operation",
+			contractID: ContractID,
+			wantErr:    false,
+		},
+		{
+			name:       "invalid contract ID returns an error",
+			contractID: "not-a-valid-contract-id",
+			wantErr:    true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClient(tt.contractID, Network)
+			op, err := client.GetVoteParams()
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, op)
+			} else {
+				require.NoError(t, err)
+				assert.NotNil(t, op)
+			}
+		})
+	}
 }

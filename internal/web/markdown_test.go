@@ -11,10 +11,10 @@ func TestRenderMarkdownTransform(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    string
-		wantRel  bool
-		wantText string
+		name      string
+		input     string
+		wantRel   bool
+		wantText  string
 		wantEmpty bool
 	}{
 		{
